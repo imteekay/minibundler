@@ -1,2 +1,3 @@
 # minipack
-Building a bundler
+
+Building a mini bundler
