@@ -2,6 +2,8 @@
 
 Building a mini bundler
 
+## Installing & Running
+
 Install dependencies with yarn
 
 ```bash
