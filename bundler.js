@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const parser = require('@babel/parser');
-const { dir } = require('console');
 const traverse = require('@babel/traverse').default;
+const babel = require('@babel/core');
 
 let ID = 0;
 
@@ -22,11 +22,15 @@ function createAsset(filename) {
   });
 
   const id = ID++;
+  const  { code } = babel.transformFromAst(ast, null, {
+    presets: ['@babel/env'],
+  });
 
   return {
     id,
     filename,
-    dependencies
+    dependencies,
+    code,
   };
 }
 
@@ -51,5 +55,42 @@ function createGraph(entry) {
   return queue;
 }
 
+function bundle(graph) {
+  let modules = '';
+
+  graph.forEach(module => {
+    modules += `${module.id}: [
+      function (require, module, exports) {
+        ${module.code}
+      },
+      ${JSON.stringify(module.mapping)},
+    ],`
+  });
+
+  const result = `
+    (function(modules) {
+      function require(id) {
+        const [fn, mapping] = modules[id];
+
+        function localRequire(relativePath) {
+          return require(mapping[relativePath]);
+        }
+
+        const module = { exports: {} };
+
+        fn(localRequire, module, module.exports);
+
+        return module.exports;
+      }
+
+      require(0);
+    })({${modules}})
+  `;
+
+  return result;
+}
+
 const graph = createGraph('./example/entry.js');
-console.log(graph);
+const result = bundle(graph);
+
+console.log(result);
